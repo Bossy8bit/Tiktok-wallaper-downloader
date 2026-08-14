@@ -5,7 +5,7 @@
 ---
 
 <details open>
-<summary><b>🇬🇧 English</b></summary>
+<summary><b>us English</b></summary>
 
 ## ✨ Features
 
