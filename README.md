@@ -1,11 +1,10 @@
 # 📱 TikTok Wallpaper Downloader (Flask)
 
-[English](#english) | [ไทย](#ไทย)
+[English](#english) | [ไทย](#thai)
 
----
-
+<a id="english"></a>
 <details open>
-<summary><b>us English</b></summary>
+<summary><b>🇬🇧 English</b></summary>
 
 ## ✨ Features
 
@@ -81,8 +80,7 @@ MIT
 
 </details>
 
----
-
+<a id="thai"></a>
 <details>
 <summary><b>🇹🇭 ไทย</b></summary>
 
