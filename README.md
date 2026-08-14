@@ -1,10 +1,90 @@
-# 📱 TikTok Wallpaper Downloader (Flask - ไม่ต้องมี Cookie)
+# 📱 TikTok Wallpaper Downloader (Flask)
 
-เว็บแอป Flask สำหรับดาวน์โหลดวิดิโอและรูปภาพจาก TikTok เป็นไฟล์ `.zip` เพื่อนำไปใช้เป็นวอลเปเปอร์มือถือ
-
-**จุดเด่น:** ใช้บริการ API ของเว็บโหลด TikTok ฟรี → **ไม่ต้องลง `yt-dlp`**, **ไม่ต้องลง `ffmpeg`**, และ **ไม่ต้องมี `cookies.txt`** ให้ยุ่งยาก
+[English](#english) | [ไทย](#ไทย)
 
 ---
+
+<details open>
+<summary><b>🇬🇧 English</b></summary>
+
+## ✨ Features
+
+- 📝 Paste multiple TikTok links (videos + photo/slideshow), one per line
+- 🖼️ Supports photo posts (`/photo/`) and video posts (`/video/`)
+- ⚡ Background downloading with real-time status
+- 📦 Auto-packages everything into a single `.zip`
+- 📱 Mobile-friendly dark UI
+- 🚫 **No Cookie / No yt-dlp / No ffmpeg required**
+
+## 📂 Project Structure
+
+```text
+tiktok_wallpaper/
+├── app.py          # Entire app (Flask + embedded HTML)
+├── README.md       # This file
+└── downloads/      # Auto-created (temporary zips)
+```
+
+## 🔧 Requirements
+
+| Component | Install |
+|-----------|---------|
+| Python    | `>= 3.8` |
+| Flask     | `pip install flask` |
+| requests  | `pip install requests` |
+
+> ✅ No need for `yt-dlp`, `ffmpeg`, or `cookies.txt`
+
+## 🚀 Quick Start
+
+```bash
+cd tiktok_wallpaper
+pip install flask requests
+python app.py
+```
+
+Open: `http://localhost:5000`
+
+## 📲 Use on Phone
+
+1. Find your PC LAN IP (e.g. `192.168.0.100`):
+   ```bash
+   # Windows
+   ipconfig
+   # Linux / macOS
+   hostname -I
+   ```
+2. Phone must be on the **same Wi-Fi**.
+3. Open browser on phone → `http://192.168.0.100:5000`
+4. Paste TikTok links (one per line), tap **Download Wallpapers** → wait → tap **⬇️ Download All (.zip)**.
+5. Extract zip and set as wallpaper (see below).
+
+## 🖼️ Set as Mobile Wallpaper
+
+**Android (Live Video):** Extract MP4/JPG → use *"Video Live Wallpaper"* or *"Wallpaper Studio 4K"* app.
+
+**iOS (Live Photo):** iOS needs a Live Photo. Use *"IntoLive"* or *"Lively"* → import MP4 → convert to Live Photo → set via Photos app.
+
+## ⚠️ Notes
+
+- Free APIs may have rate limits (don't bulk-download hundreds at once).
+- If you see *"all methods failed"*, retry later (server may be temporary down).
+- Uses `tikwm.com` and `tiklydown.eu.org` APIs. If they shut down, update URLs in `try_tikwm` / `try_tiklydown`.
+
+## ⚖️ Legal
+
+Only download content you own or have permission to use. Downloading copyrighted material without authorization may violate TikTok ToS and local copyright laws. Author is not responsible for misuse.
+
+## 📄 License
+
+MIT
+
+</details>
+
+---
+
+<details>
+<summary><b>🇹🇭 ไทย</b></summary>
 
 ## ✨ ฟีเจอร์
 
@@ -12,10 +92,8 @@
 - 🖼️ รองรับโพสต์รูป (`/photo/`) และวิดิโอ (`/video/`)
 - ⚡ ดาวน์โหลดเบื้องหลัง + แสดงสถานะแบบเรียลไทม์
 - 📦 แพ็คทุกไฟล์เป็น `.zip` ให้ดาวน์โหลดครั้งเดียว
-- 📱 UI เปิดบนมือถือได้สบาย (ธีมมืด)
+- 📱 UI มือถือ (ธีมมืด)
 - 🚫 **ไม่ต้องใช้ Cookie / ไม่ต้องลง yt-dlp / ffmpeg**
-
----
 
 ## 📂 โครงสร้างโปรเจกต์
 
@@ -26,8 +104,6 @@ tiktok_wallpaper/
 └── downloads/      # สร้างอัตโนมัติ (เก็บ zip ชั่วคราว)
 ```
 
----
-
 ## 🔧 ความต้องการของระบบ
 
 | สิ่งที่ต้องมี | วิธีติดตั้ง |
@@ -36,112 +112,50 @@ tiktok_wallpaper/
 | Flask        | `pip install flask` |
 | requests     | `pip install requests` |
 
-> ✅ **ไม่จำเป็นต้องลง** `yt-dlp`, `ffmpeg` หรือเตรียม `cookies.txt` แล้ว
+> ✅ ไม่จำเป็นต้องลง `yt-dlp`, `ffmpeg` หรือเตรียม `cookies.txt`
 
----
-
-## 🚀 เริ่มใช้งานอย่างไร
+## 🚀 เริ่มใช้งาน
 
 ```bash
-# 1. เข้าโฟลเดอร์โปรเจกต์
 cd tiktok_wallpaper
-
-# 2. ติดตั้งแค่ 2 ตัวนี้
 pip install flask requests
-
-# 3. รันเซิร์ฟเวอร์
 python app.py
 ```
 
-เปิดเบราว์เซอร์ที่:
-```
-http://localhost:5000
-```
-
----
+เปิด: `http://localhost:5000`
 
 ## 📲 วิธีใช้งานบนมือถือ
 
-1. **หา IP ของเครื่องคอมพิวเตอร์** (เช่น `192.168.0.100`):
+1. หา IP ของเครื่องคอม (เช่น `192.168.0.100`):
    ```bash
    # Windows
    ipconfig
    # Linux / macOS
    hostname -I
    ```
-2. **มือถือต้องต่อ Wi-Fi เครือข่ายเดียวกับคอม**
-3. เปิดเบราว์เซอร์มือถือ ไปที่:
-   ```
-   http://192.168.0.100:5000
-   ```
-4. วางลิงก์ TikTok (หนึ่งลิงก์ต่อบรรทัด):
-   ```text
-   https://www.tiktok.com/@user/video/1234567890
-   https://www.tiktok.com/@user/photo/7656853975429401872?_r=1&_t=ZS-xxxx
-   ```
-5. กด **"Download Wallpapers"** → รอแถบสถานะ → กด **⬇️ โหลดทั้งหมด (.zip)**
-6. แตก zip แล้วนำไปตั้งเป็นวอลเปเปอร์ (ดูด้านล่าง)
+2. มือถือต้องต่อ **Wi-Fi เครือข่ายเดียวกับคอม**
+3. เปิดเบราว์เซอร์มือถือ → `http://192.168.0.100:5000`
+4. วางลิงก์ TikTok (หนึ่งลิงก์ต่อบรรทัด) → กด **Download Wallpapers** → รอ → กด **⬇️ โหลดทั้งหมด (.zip)**
+5. แตก zip แล้วนำไปตั้งเป็นวอลเปเปอร์ (ดูด้านล่าง)
 
----
+## 🖼️ ตั้งเป็นวอลเปเปอร์มือถือ
 
-## 🖼️ ตั้งรูป/วิดิโอเป็นวอลเปเปอร์มือถือ
+**Android (วิดิโอสด):** แตก MP4/JPG → ใช้แอป *"Video Live Wallpaper"* หรือ *"Wallpaper Studio 4K"*
 
-<details>
-<summary><b>Android — Live Video Wallpaper</b></summary>
-
-1. แตกไฟล์ `.zip` เอาไฟล์ MP4 / JPG ออกมา
-2. ติดแอปเช่น **"Video Live Wallpaper"** หรือ **"Wallpaper Studio 4K"** จาก Play Store
-3. เลือกไฟล์ → ตั้งเป็นวอลเปเปอร์หน้าจอหลัก/ล็อกสกรีน
-
-</details>
-
-<details>
-<summary><b>iOS — Live Photo Wallpaper</b></summary>
-
-> iOS ใช้ไฟล์วิดิโอเปล่าๆ ไม่ได้ ต้องแปลงเป็น Live Photo ก่อน
-
-1. แตก zip เอา MP4 / รูปออกมา
-2. ใช้แอปฟรีเช่น **"IntoLive"** หรือ **"Lively"** → นำเข้า MP4 → แปลงเป็น Live Photo
-3. ในแอป Photos: `Settings → Wallpaper → Choose a New Wallpaper → Live Photo`
-
-</details>
-
----
-
-## 🧪 ทดสอบ API ก่อนรันจริง (ไม่บังคับ)
-
-สร้างไฟล์ `test_api.py`:
-
-```python
-import requests
-url = "https://www.tiktok.com/@houseofuday/photo/7667599388478426369"
-r = requests.get("https://www.tikwm.com/api/", params={"url": url}, timeout=30)
-print(r.status_code)
-d = r.json()
-print("code:", d.get("code"))
-print("images:", len(d.get("data", {}).get("images", [])))
-```
-
-หากได้ `code: 0` และ `images: >0` แปลว่าใช้งานได้ปกติ
-
----
+**iOS (Live Photo):** iOS ต้องใช้ Live Photo → ใช้แอป *"IntoLive"* หรือ *"Lively"* → นำเข้า MP4 → แปลงเป็น Live Photo → ตั้งผ่านแอป Photos
 
 ## ⚠️ ข้อควรระวัง
 
-- บริการฟรีอาจมี **rate limit** (ถ้าโหลดทีละหลายร้อยรูปอาจช้า/โดนบล็อกชั่วคราว)
-- หากเจอข้อความ *"ทุกวิธีล้มเหลว"* ให้ลองใหม่ภายหลัง (เซิร์ฟเวอร์อาจชั่วคราว)
-- โค้ดนี้ใช้ API ของ `tikwm.com` และ `tiklydown.eu.org` — หากเจ้าของบริการปิด API ต้องปรับ URL ในฟังก์ชัน `try_tikwm` / `try_tiklydown`
+- บริการฟรีอาจมี rate limit (อย่าโหลดทีละหลายร้อยรูปพร้อมกัน)
+- หากเจอ *"ทุกวิธีล้มเหลว"* ให้ลองใหม่ภายหลัง (เซิร์ฟเวอร์อาจชั่วคราว)
+- ใช้ API ของ `tikwm.com` และ `tiklydown.eu.org` หากปิดบริการ ให้แก้ URL ในฟังก์ชัน `try_tikwm` / `try_tiklydown`
 
----
+## ⚖️ กฎหมาย
 
-## ⚖️ กฎหมาย / เงื่อนไขการใช้งาน
+ดาวน์โหลดเฉพาะคลิป/รูปที่คุณเป็นเจ้าของ หรือได้รับอนุญาต การดาวน์โหลดลิขสิทธิ์โดยไม่ได้รับอนุญาต อาจผิด ToS ของ TikTok และกฎหมายท้องถิ่น ผู้จัดทำไม่รับผิดชอบต่อการนำไปใช้ผิดวัตถุประสงค์
 
-- ดาวน์โหลดเฉพาะคลิป/รูปที่คุณเป็นเจ้าของ หรือได้รับอนุญาตเท่านั้น
-- การดาวน์โหลดหรือแจกจ่ายงานที่มีลิขสิทธิ์โดยไม่ได้รับอนุญาต อาจผิด Terms of Service ของ TikTok และกฎหมายลิขสิทธิ์ท้องถิ่น
-- ผู้จัดทำไม่รับผิดชอบต่อการนำไปใช้งานผิดวัตถุประสงค์
+## 📄 สัญญาอนุญาต
 
----
+MIT
 
-## 📄 License
-
-MIT — ใช้งาน / แก้ไข / แจกจ่ายได้อิสระ
+</details>
