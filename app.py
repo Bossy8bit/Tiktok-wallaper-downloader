@@ -1,12 +1,10 @@
 import os
 import re
-import json
 import uuid
 import zipfile
 import threading
 import requests
 from flask import Flask, request, send_file, jsonify, render_template_string
-import yt_dlp
 
 app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -14,112 +12,123 @@ DOWNLOAD_FOLDER = os.path.join(BASE_DIR, "downloads")
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 jobs = {}
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-}
+print(">>> LOADED app.py v5 (3rd-party API - no cookies needed) <<<")
 
 
-# ---------- VIDEO (yt-dlp) ----------
-def download_video(url: str, job_folder: str) -> dict:
-    ydl_opts = {
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        "outtmpl": os.path.join(job_folder, "%(id)s.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
-        "merge_output_format": "mp4",
-        "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
-        "extractor_args": {"tiktok": {"api_hostname": "api.tiktokv.com"}},
-    }
+def get_session():
+    s = requests.Session()
+    s.headers.update({"User-Agent": UA, "Referer": "https://www.tiktok.com/"})
+    return s
+
+
+def save_file(url, session, job_folder, filename):
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            fname = ydl.prepare_filename(info)
-            base, _ = os.path.splitext(fname)
-            mp4 = base + ".mp4"
-            final = mp4 if os.path.exists(mp4) else fname
-            return {"url": url, "file": final, "title": info.get("title", "video"), "count": 1, "status": "ok"}
-    except Exception as e:
-        return {"url": url, "error": str(e), "status": "error"}
-
-
-# ---------- PHOTO / SLIDESHOW ----------
-def save_image(img_url: str, job_folder: str, index: int) -> str | None:
-    try:
-        # strip tracking/watermark query params
-        clean = img_url.split("?")[0]
-        r = requests.get(clean, headers=HEADERS, timeout=20)
+        r = session.get(url, timeout=40, stream=True)
         r.raise_for_status()
-        ext = ".jpg" if "jpg" in clean.lower() else (".png" if "png" in clean.lower() else ".jpg")
-        fname = os.path.join(job_folder, f"photo_{index}{ext}")
-        with open(fname, "wb") as f:
-            f.write(r.content)
-        return fname
-    except Exception:
+        path = os.path.join(job_folder, filename)
+        with open(path, "wb") as f:
+            for chunk in r.iter_content(8192):
+                f.write(chunk)
+        return path
+    except Exception as e:
+        print("save err:", e)
         return None
 
 
-def download_photo(url: str, job_folder: str) -> dict:
+def clean_title(t):
+    if not t:
+        return "tiktok"
+    t = re.sub(r'[\\/:*?"<>|]', '', t).strip()
+    return t[:50] or "tiktok"
+
+
+def try_tikwm(url, s, job_folder):
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=20)
-        resp.raise_for_status()
-        html = resp.text
-
-        # Grab TikTok's embedded JSON
-        m = re.search(
-            r'<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">(.*?)</script>',
-            html, re.DOTALL)
-        images = []
-        title = "photo_post"
-        if m:
-            data = json.loads(m.group(1))
-            scope = data.get("__DEFAULT_SCOPE__", {})
-            detail = scope.get("webapp.video-detail", {})
-            item = detail.get("itemInfo", {}).get("itemStruct", {})
-            title = item.get("desc", "photo_post") or title
-            img_post = item.get("imagePost", {})
-            images = [img.get("imageUrl") for img in img_post.get("images", []) if img.get("imageUrl")]
-            # fallback to share cover if only one image
-            if not images and detail.get("shareInfoMeta", {}).get("imageUrl"):
-                images = [detail["shareInfoMeta"]["imageUrl"]]
-        else:
-            # last resort: og:image
-            og = re.search(r'<meta property="og:image" content="([^"]+)"', html)
-            if og:
-                images = [og.group(1)]
-
-        if not images:
-            return {"url": url, "error": "No images found in post", "status": "error"}
-
-        files = []
-        for i, img_url in enumerate(images):
-            f = save_image(img_url, job_folder, i)
+        r = s.get("https://www.tikwm.com/api/", params={"url": url, "hd": 1}, timeout=30)
+        if r.status_code != 200:
+            return None
+        d = r.json()
+        if d.get("code") != 0:
+            return None
+        data = d.get("data", {})
+        title = clean_title(data.get("title"))
+        imgs = data.get("images") or []
+        if imgs:
+            files = []
+            for i, img in enumerate(imgs):
+                u = img.get("url") if isinstance(img, dict) else img
+                if not u:
+                    continue
+                ext = ".png" if "png" in str(u).lower() else ".jpg"
+                f = save_file(u, s, job_folder, f"photo_{i}{ext}")
+                if f:
+                    files.append(f)
+            if files:
+                return {"url": url, "files": files, "title": title, "count": len(files), "status": "ok"}
+        vurl = data.get("play") or data.get("wmplay") or data.get("video")
+        if vurl:
+            f = save_file(vurl, s, job_folder, f"{title}.mp4")
             if f:
-                files.append(f)
-
-        if not files:
-            return {"url": url, "error": "Failed to download images", "status": "error"}
-
-        return {"url": url, "files": files, "title": title, "count": len(files), "status": "ok"}
+                return {"url": url, "file": f, "title": title, "count": 1, "status": "ok"}
+        return None
     except Exception as e:
-        return {"url": url, "error": str(e), "status": "error"}
+        print("tikwm err:", e)
+        return None
 
 
-# ---------- DISPATCH ----------
-def download_url(url: str, job_folder: str) -> dict:
-    if "/photo/" in url or "/photo" in url:
-        return download_photo(url, job_folder)
-    return download_video(url, job_folder)
+def try_tiklydown(url, s, job_folder):
+    try:
+        r = s.get("https://api.tiklydown.eu.org/api/download", params={"url": url}, timeout=30)
+        if r.status_code != 200:
+            return None
+        d = r.json()
+        if not d.get("ok"):
+            return None
+        res = d.get("result", {})
+        title = clean_title(res.get("desc") or res.get("title"))
+        imgs = res.get("images") or []
+        if imgs:
+            files = []
+            for i, img in enumerate(imgs):
+                u = img.get("url") if isinstance(img, dict) else img
+                if not u:
+                    continue
+                ext = ".png" if "png" in str(u).lower() else ".jpg"
+                f = save_file(u, s, job_folder, f"photo_{i}{ext}")
+                if f:
+                    files.append(f)
+            if files:
+                return {"url": url, "files": files, "title": title, "count": len(files), "status": "ok"}
+        vurl = None
+        if isinstance(res.get("video"), dict):
+            vurl = res["video"].get("noWatermark") or res["video"].get("url")
+        else:
+            vurl = res.get("video")
+        if vurl:
+            f = save_file(vurl, s, job_folder, f"{title}.mp4")
+            if f:
+                return {"url": url, "file": f, "title": title, "count": 1, "status": "ok"}
+        return None
+    except Exception as e:
+        print("tiklydown err:", e)
+        return None
 
 
-# ---------- WORKER ----------
-def worker(job_id: str, urls: list):
+def download_url(url, job_folder):
+    s = get_session()
+    for fn in (try_tikwm, try_tiklydown):
+        res = fn(url, s, job_folder)
+        if res:
+            return res
+    return {"url": url, "error": "ทุกวิธีล้มเหลว (ลองใหม่ภายหลัง)", "status": "error"}
+
+
+def worker(job_id, urls):
     job_folder = os.path.join(DOWNLOAD_FOLDER, job_id)
     os.makedirs(job_folder, exist_ok=True)
-
     results = [download_url(u, job_folder) for u in urls]
-
     zip_path = os.path.join(DOWNLOAD_FOLDER, f"{job_id}.zip")
     with zipfile.ZipFile(zip_path, "w") as zf:
         for r in results:
@@ -131,11 +140,9 @@ def worker(job_id: str, urls: list):
                         zf.write(f, os.path.basename(f))
             elif r.get("file") and os.path.exists(r["file"]):
                 zf.write(r["file"], os.path.basename(r["file"]))
-
     jobs[job_id].update({"results": results, "zip": zip_path, "status": "done"})
 
 
-# ---------- ROUTES ----------
 @app.route("/")
 def index():
     return render_template_string(HTML)
@@ -169,7 +176,6 @@ def get_zip(job_id):
     return send_file(job["zip"], as_attachment=True, download_name="tiktok_wallpapers.zip")
 
 
-# ---------- FRONTEND ----------
 HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -190,16 +196,18 @@ HTML = """<!DOCTYPE html>
     .ok { color:#4ade80; }
     .err { color:#f87171; }
     a.dl { display:block; text-align:center; margin-top:16px; padding:14px; background:#25f4ee; color:#000; border-radius:12px; font-weight:700; text-decoration:none; }
+    .hint { text-align:center; font-size:12px; color:#888; margin-top:10px; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>📱 TikTok Wallpaper Downloader</h1>
-    <p style="text-align:center;font-size:13px;color:#888;">Paste TikTok video OR photo links (one per line)</p>
+    <p style="text-align:center;font-size:13px;color:#888;">วางลิงก์ TikTok video หรือ photo (หนึ่งลิงก์ต่อบรรทัด)</p>
     <textarea id="urls" placeholder="https://www.tiktok.com/@user/video/123&#10;https://www.tiktok.com/@user/photo/456"></textarea>
     <button id="btn" onclick="start()">Download Wallpapers</button>
     <div id="status"></div>
     <div id="result"></div>
+    <p class="hint">ใช้บริการโหลดฟรี (ไม่ต้อง cookies) — ถ้ารูปโหลดไม่ได้ชั่วคราว ให้ลองใหม่ภายหลัง</p>
   </div>
   <script>
     let timer = null;
@@ -209,9 +217,9 @@ HTML = """<!DOCTYPE html>
       const statusEl = document.getElementById("status");
       const resultEl = document.getElementById("result");
       const urls = document.getElementById("urls").value;
-      if (!urls.trim()) { statusEl.textContent = "Please paste at least one link."; return; }
+      if (!urls.trim()) { statusEl.textContent = "กรุณาวางลิงก์อย่างน้อย 1 อัน"; return; }
       btn.disabled = true;
-      statusEl.textContent = "Processing... ⏳";
+      statusEl.textContent = "กำลังประมวลผล... ⏳";
       resultEl.innerHTML = "";
       fetch("/download", {
         method: "POST",
@@ -232,17 +240,17 @@ HTML = """<!DOCTYPE html>
         .then(r => r.json())
         .then(job => {
           if (job.status === "done") { clearInterval(timer); render(job); }
-          else { document.getElementById("status").textContent = "Downloading... ⏳"; }
+          else { document.getElementById("status").textContent = "กำลังโหลด... ⏳"; }
         });
       }, 1500);
     }
     function render(job) {
-      document.getElementById("status").textContent = "Done! ✅";
+      document.getElementById("status").textContent = "เสร็จแล้ว! ✅";
       document.getElementById("btn").disabled = false;
-      let html = '<a class="dl" href="/get_zip/' + currentJobId + '">⬇️ Download All (.zip)</a>';
+      let html = '<a class="dl" href="/get_zip/' + currentJobId + '">⬇️ โหลดทั้งหมด (.zip)</a>';
       job.results.forEach(r => {
         if (r.status === "ok") {
-          const label = (r.count > 1) ? (r.title + " (" + r.count + " images)") : r.title;
+          const label = (r.count > 1) ? (r.title + " (" + r.count + " รูป)") : r.title;
           html += '<div class="result-card"><span class="ok">✔</span> ' + escapeHtml(label) + '</div>';
         } else {
           html += '<div class="result-card"><span class="err">✖</span> ' + escapeHtml(r.url) + ' — ' + escapeHtml(r.error) + '</div>';
@@ -251,9 +259,8 @@ HTML = """<!DOCTYPE html>
       document.getElementById("result").innerHTML = html;
     }
     function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => (
-        {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]
-      ));
+      const map = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
+      return String(s).replace(/[&<>"']/g, c => map[c]);
     }
   </script>
 </body>
