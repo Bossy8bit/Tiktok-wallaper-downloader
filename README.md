@@ -11,7 +11,7 @@ A lightweight, single-file Flask web app that lets you **batch-download TikTok v
 - 📦 Auto-packages everything into a single `.zip`
 - 📱 Mobile-friendly UI (dark theme)
 - 🧩 **Single Python file** — no template folder needed
-
+- 🖼️ **Photo / slideshow posts** (`/photo/` URLs) → downloads clean images, no watermark
 ---
 
 ## 📂 Project Structure
